@@ -1,0 +1,50 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    name: the contracts build and their refusals hold
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+          targets: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - run: cargo fmt --check
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+      # The thing that actually gets deployed is the wasm, so build it here
+      # rather than finding out at deploy time.
+      - run: cargo build --release --target wasm32-unknown-unknown
+      - name: report the deployable wasm size
+        run: |
+          size=$(stat -c%s target/wasm32-unknown-unknown/release/stellar_shield.wasm)
+          echo "wasm is $size bytes"
+          # A generous ceiling: this is here to catch runaway growth, not to
+          # enforce a number nobody has measured.
+          test "$size" -lt 1000000
+
+  hygiene:
+    runs-on: ubuntu-latest
+    name: build output stays out of the repository
+    steps:
+      - uses: actions/checkout@v5
+      # This repository once carried 1,522 files of target/ and weighed 258 MB.
+      # Anyone cloning it downloaded a quarter of a gigabyte of compiler output
+      # to read a few hundred lines of Rust.
+      - name: no build artifacts are tracked
+        run: |
+          if git ls-files | grep -E '^target/'; then
+            echo "::error::target/ is tracked; add it to .gitignore and git rm -r --cached target"
+            exit 1
+          fi
+          echo "no target/ in the index"
+      - name: a gitignore exists and covers target
+        run: grep -qE '^/?target' .gitignore
