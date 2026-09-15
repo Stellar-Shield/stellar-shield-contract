@@ -1,10 +1,12 @@
 # Deployment
 
-Live: https://stellar-shield-frontend.vercel.app
+Frontend: https://stellar-shield-frontend.vercel.app
+Backend:  https://stellar-shield-backend.vercel.app
 
-The three contracts are deployed on Stellar testnet. The frontend reads them
-directly over Soroban RPC from the browser, so the dashboard works with no
-backend running; BACKEND_URL is only needed for passkey registration.
+The contracts are on Stellar testnet. The dashboard reads them directly over
+Soroban RPC from the browser, so it works with no backend running. The backend
+serves the WebAuthn endpoints, which need a shared challenge store: without
+REDIS_URL set, /auth/* answers 503 and says so.
 
 | contract | testnet address |
 | --- | --- |
